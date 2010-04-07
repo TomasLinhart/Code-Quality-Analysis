@@ -1,0 +1,13 @@
+_ReSharper.*
+Bin
+obj
+
+.DS_Store
+Thumbs.db
+
+*.user
+*.suo
+
+*.xap
+*.dll
+*.pdb
