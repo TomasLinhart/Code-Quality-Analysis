@@ -95,11 +95,6 @@ namespace CodeQualityAnalysis
             {
                 if (typeDefinition.Name != "<Module>")
                 {
-                    var lol = (from n in module.Namespaces
-                               from t in n.Types
-                               where t.Name == FormatTypeName(typeDefinition)
-                               select t).ToArray();
-
                     var type =
                         (from n in module.Namespaces
                          from t in n.Types

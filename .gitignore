@@ -11,3 +11,8 @@ Thumbs.db
 *.xap
 *.dll
 *.pdb
+*.exe.config
+*.exe
+.manifest
+.png
+.zip
