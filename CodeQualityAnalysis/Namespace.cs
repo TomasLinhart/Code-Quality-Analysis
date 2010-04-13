@@ -5,14 +5,15 @@ using System.Text;
 
 namespace CodeQualityAnalysis
 {
-    public class Module
+    public class Namespace
     {
-        public ISet<Namespace> Namespaces { get; set; }
+        public ISet<Type> Types { get; set; }
         public string Name { get; set; }
+        public Module Module { get; set; }
 
-        public Module()
+        public Namespace()
         {
-            Namespaces = new HashSet<Namespace>();
+            Types = new HashSet<Type>();
         }
     }
 }

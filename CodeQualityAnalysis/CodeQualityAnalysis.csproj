@@ -78,8 +78,11 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Extractor.cs" />
+    <Compile Include="Field.cs" />
+    <Compile Include="IDependency.cs" />
+    <Compile Include="MetricsReader.cs" />
     <Compile Include="Method.cs" />
+    <Compile Include="Namespace.cs" />
     <Compile Include="Type.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>

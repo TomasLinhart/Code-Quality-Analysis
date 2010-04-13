@@ -10,37 +10,37 @@ namespace CodeQualityAnalysis
     /// <summary>
     /// Extracts neccesery with Mono.Cecil to calculate code metrics
     /// </summary>
-    public class Extractor
+    public class MetricsReader
     {
         public Module MainModule { get; private set; } 
 
-        public Extractor(string file)
+        public MetricsReader(string file)
         {
-            this.ExtractAssembly(file);
+            this.ReadAssembly(file);
         }
 
         /// <summary>
         /// Opens file as assembly and starts extracting MainModule
         /// </summary>
         /// <param name="file"></param>
-        private void ExtractAssembly(string file)
+        private void ReadAssembly(string file)
         {
             var assembly = AssemblyFactory.GetAssembly(file);
-            ExtractModule(assembly.MainModule);
+            ReadModule(assembly.MainModule);
         }
 
         /// <summary>
         /// Extracts main module from assembly
         /// </summary>
         /// <param name="moduleDefinition"></param>
-        private void ExtractModule(ModuleDefinition moduleDefinition)
+        private void ReadModule(ModuleDefinition moduleDefinition)
         {
             this.MainModule = new Module()
                                   {
                                       Name = moduleDefinition.Name
                                   };
 
-            ExtractTypes(MainModule, moduleDefinition.Types);
+            ReadTypes(MainModule, moduleDefinition.Types);
         }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace CodeQualityAnalysis
         /// </summary>
         /// <param name="module"></param>
         /// <param name="types"></param>
-        private void ExtractTypes(Module module, TypeDefinitionCollection types)
+        private void ReadTypes(Module module, TypeDefinitionCollection types)
         {
             // first add all types, because i will need find depend types
 
@@ -58,12 +58,36 @@ namespace CodeQualityAnalysis
                 {
                     var type = new Type()
                     {
-                        FullName = typeDefinition.FullName,
-                        Name = typeDefinition.Name,
-                        Module = module
+                        FullName = FormatTypeName(typeDefinition),
+                        Name = FormatTypeName(typeDefinition)
                     };
 
-                    module.Types.Add(type);
+                    // try find first namespace
+
+                    string nsName = String.Empty;
+
+                    if (!String.IsNullOrEmpty(typeDefinition.Namespace))
+                        nsName = typeDefinition.Namespace;
+                    else
+                        nsName = "-";
+
+                    var ns = (from n in module.Namespaces
+                              where n.Name == nsName
+                              select n).SingleOrDefault();
+
+                    if (ns == null)
+                    {
+                        ns = new Namespace()
+                               {
+                                   Name = nsName,
+                                   Module = module
+                               };
+
+                        module.Namespaces.Add(ns);
+                    }
+
+                    type.Namespace = ns;
+                    ns.Types.Add(type);
                 }
             }
 
@@ -71,13 +95,21 @@ namespace CodeQualityAnalysis
             {
                 if (typeDefinition.Name != "<Module>")
                 {
-                    var type = (from t in module.Types
-                                where t.FullName == typeDefinition.FullName
-                                select t).SingleOrDefault();
+                    var lol = (from n in module.Namespaces
+                               from t in n.Types
+                               where t.Name == FormatTypeName(typeDefinition)
+                               select t).ToArray();
 
-                    ExtractMethods(type, typeDefinition.Methods);
+                    var type =
+                        (from n in module.Namespaces
+                         from t in n.Types
+                         where (t.Name == FormatTypeName(typeDefinition))
+                        select t).SingleOrDefault();
+                    
 
-                    ExtractConstructors(type, typeDefinition.Constructors);
+                    ReadMethods(type, typeDefinition.Methods);
+
+                    ReadConstructors(type, typeDefinition.Constructors);
                 }
             }
 
@@ -91,7 +123,7 @@ namespace CodeQualityAnalysis
         /// </summary>
         /// <param name="type"></param>
         /// <param name="methods"></param>
-        private void ExtractMethods(Type type, MethodDefinitionCollection methods)
+        private void ReadMethods(Type type, MethodDefinitionCollection methods)
         {
             foreach (MethodDefinition methodDefinition in methods)
             {
@@ -112,7 +144,7 @@ namespace CodeQualityAnalysis
 
                 if (methodDefinition.Body != null)
                 {
-                    ExtractInstructions(method, methodDefinition, methodDefinition.Body.Instructions);
+                    ReadInstructions(method, methodDefinition, methodDefinition.Body.Instructions);
                 }
             }
         }
@@ -122,7 +154,7 @@ namespace CodeQualityAnalysis
         /// </summary>
         /// <param name="type"></param>
         /// <param name="constructors"></param>
-        private void ExtractConstructors(Type type, ConstructorCollection constructors)
+        private void ReadConstructors(Type type, ConstructorCollection constructors)
         {
             foreach (MethodDefinition constructor in constructors)
             {
@@ -143,7 +175,7 @@ namespace CodeQualityAnalysis
 
                 if (constructor.Body != null)
                 {
-                    ExtractInstructions(method, constructor, constructor.Body.Instructions);
+                    ReadInstructions(method, constructor, constructor.Body.Instructions);
                 }
             }
         }
@@ -154,23 +186,25 @@ namespace CodeQualityAnalysis
         /// <param name="method"></param>
         /// <param name="methodDefinition"></param>
         /// <param name="instructions"></param>
-        public void ExtractInstructions(Method method, MethodDefinition methodDefinition,
+        public void ReadInstructions(Method method, MethodDefinition methodDefinition,
             InstructionCollection instructions)
         {
             foreach (Instruction instruction in instructions)
             {
-                var meth = ExtractInstruction(instruction) as MethodDefinition;
+                var meth = ReadInstruction(instruction) as MethodDefinition;
                 if (meth != null)
                 {
-                    var type = (from t in method.Type.Module.Types
-                                where t.FullName == meth.DeclaringType.FullName
+                    var type = (from n in method.Type.Namespace.Module.Namespaces
+                                from t in n.Types
+                                where t.Name == FormatTypeName(meth.DeclaringType) &&
+                                n.Name == t.Namespace.Name
                                 select t).SingleOrDefault();
 
                     method.TypeUses.Add(type);
 
-                    var findTargetMethod = (from t in type.Methods
-                                            where t.Name == FormatMethodName(meth)
-                                            select t).SingleOrDefault();
+                    var findTargetMethod = (from m in type.Methods
+                                            where m.Name == FormatMethodName(meth)
+                                            select m).SingleOrDefault();
 
                     if (findTargetMethod != null && type == method.Type) 
                         method.MethodUses.Add(findTargetMethod);
@@ -184,7 +218,7 @@ namespace CodeQualityAnalysis
         /// </summary>
         /// <param name="instruction"></param>
         /// <returns></returns>
-        public object ExtractInstruction(Instruction instruction)
+        public object ReadInstruction(Instruction instruction)
         {
             if (instruction.Operand == null)
                 return null;
@@ -192,7 +226,7 @@ namespace CodeQualityAnalysis
             var nextInstruction = instruction.Operand as Instruction;
 
             if (nextInstruction != null)
-                return ExtractInstruction(nextInstruction);
+                return ReadInstruction(nextInstruction);
             else
                 return instruction.Operand;
         }
@@ -212,7 +246,7 @@ namespace CodeQualityAnalysis
                 bool hasNext = enumerator.MoveNext();
                 while (hasNext)
                 {
-                    builder.Append(((ParameterDefinition)enumerator.Current).ParameterType.FullName);
+                    builder.Append(((ParameterDefinition) enumerator.Current).ParameterType.FullName);
                     hasNext = enumerator.MoveNext();
                     if (hasNext)
                         builder.Append(", ");
@@ -224,6 +258,27 @@ namespace CodeQualityAnalysis
             {
                 return methodDefinition.Name + "()";
             }
+        }
+
+        public static string FormatTypeName(TypeDefinition typeDefinition)
+        {
+            if (typeDefinition.HasGenericParameters)
+            {
+                var builder = new StringBuilder();
+                var enumerator = typeDefinition.GenericParameters.GetEnumerator();
+                bool hasNext = enumerator.MoveNext();
+                while (hasNext)
+                {
+                    builder.Append(((GenericParameter)enumerator.Current).Name);
+                    hasNext = enumerator.MoveNext();
+                    if (hasNext)
+                        builder.Append(",");
+                }
+
+                return typeDefinition.Name + "<" + builder.ToString() + ">";
+            }
+
+            return typeDefinition.Name; 
         }
     }
 }

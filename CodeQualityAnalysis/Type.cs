@@ -8,13 +8,15 @@ namespace CodeQualityAnalysis
     public class Type
     {
         public ISet<Method> Methods { get; set; }
+        public ISet<Field> Fields { get; set; }
         public string FullName { get; set; }
         public string Name { get; set; }
-        public Module Module { get; set; }
+        public Namespace Namespace { get; set; }
 
         public Type()
         {
             Methods = new HashSet<Method>();
+            Fields = new HashSet<Field>();
         }
 
         public ISet<Type> GetUses()

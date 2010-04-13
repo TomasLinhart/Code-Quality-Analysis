@@ -24,7 +24,7 @@ namespace CodeQualityAnalysis
     /// </summary>
     public partial class MainWindow : Window
     {
-        private Extractor _extractor;
+        private MetricsReader _metricsReader;
 
         public MainWindow()
         {
@@ -45,7 +45,7 @@ namespace CodeQualityAnalysis
 
             definitionTree.Items.Clear();
         
-            _extractor = new Extractor(fileDialog.FileName);
+            _metricsReader = new MetricsReader(fileDialog.FileName);
 
             FillTree();
         }
@@ -55,18 +55,24 @@ namespace CodeQualityAnalysis
         /// </summary>
         private void FillTree()
         {
-            var itemModule = new TreeViewItem() { Header = _extractor.MainModule.Name };
+            var itemModule = new TreeViewItem() { Header = _metricsReader.MainModule.Name };
             definitionTree.Items.Add(itemModule);
 
-            foreach (var type in _extractor.MainModule.Types)
+            foreach (var ns in _metricsReader.MainModule.Namespaces)
             {
-                var itemType = new TreeViewItem() { Header = type.FullName };
-                itemModule.Items.Add(itemType);
+                var nsType = new TreeViewItem() { Header = ns.Name };
+                itemModule.Items.Add(nsType);
 
-                foreach (var method in type.Methods)
+                foreach (var type in ns.Types)
                 {
-                    var itemMethod = new TreeViewItem() { Header = method.Name };
-                    itemType.Items.Add(itemMethod);
+                    var itemType = new TreeViewItem() { Header = type.Name };
+                    nsType.Items.Add(itemType);
+
+                    foreach (var method in type.Methods)
+                    {
+                        var itemMethod = new TreeViewItem() { Header = method.Name };
+                        itemType.Items.Add(itemMethod);
+                    }
                 }
             }
         }
@@ -81,8 +87,9 @@ namespace CodeQualityAnalysis
                 // will do it later or will use another tree maybe tree from SharpDevelop
                 string name = item.Header.ToString();
                 txbTypeInfo.Text = "Infobox: \n" + name;
-                var type = (from t in this._extractor.MainModule.Types
-                            where t.FullName == name
+                var type = (from n in this._metricsReader.MainModule.Namespaces
+                            from t in n.Types
+                            where t.Name == name
                             select t).SingleOrDefault();
 
                 if (type != null)
