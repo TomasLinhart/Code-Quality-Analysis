@@ -8,7 +8,7 @@ using Mono.Cecil.Cil;
 namespace CodeQualityAnalysis
 {
     /// <summary>
-    /// Extracts neccesery with Mono.Cecil to calculate code metrics
+    /// Reads neccesery information with Mono.Cecil to calculate code metrics
     /// </summary>
     public class MetricsReader
     {
@@ -20,7 +20,7 @@ namespace CodeQualityAnalysis
         }
 
         /// <summary>
-        /// Opens file as assembly and starts extracting MainModule
+        /// Opens file as assembly and starts reading MainModule
         /// </summary>
         /// <param name="file"></param>
         private void ReadAssembly(string file)
@@ -30,7 +30,7 @@ namespace CodeQualityAnalysis
         }
 
         /// <summary>
-        /// Extracts main module from assembly
+        /// Reads main module from assembly
         /// </summary>
         /// <param name="moduleDefinition"></param>
         private void ReadModule(ModuleDefinition moduleDefinition)
@@ -44,7 +44,7 @@ namespace CodeQualityAnalysis
         }
 
         /// <summary>
-        /// Extracts types from module
+        /// Reads types from module
         /// </summary>
         /// <param name="module"></param>
         /// <param name="types"></param>
@@ -62,14 +62,8 @@ namespace CodeQualityAnalysis
                         Name = FormatTypeName(typeDefinition)
                     };
 
-                    // try find first namespace
-
-                    string nsName = String.Empty;
-
-                    if (!String.IsNullOrEmpty(typeDefinition.Namespace))
-                        nsName = typeDefinition.Namespace;
-                    else
-                        nsName = "-";
+                    // try find namespace
+                    var nsName = GetNamespaceName(typeDefinition);
 
                     var ns = (from n in module.Namespaces
                               where n.Name == nsName
@@ -100,17 +94,47 @@ namespace CodeQualityAnalysis
                          from t in n.Types
                          where (t.Name == FormatTypeName(typeDefinition))
                         select t).SingleOrDefault();
-                    
 
-                    ReadMethods(type, typeDefinition.Methods);
 
-                    ReadConstructors(type, typeDefinition.Constructors);
+                    if (typeDefinition.HasFields)
+                        ReadFields(type, typeDefinition.Fields);
+
+                    /*if (typeDefinition.HasEvents)
+                        ReadEvents(type, typeDefinition.Events);*/
+
+                    if (typeDefinition.HasMethods)
+                        ReadMethods(type, typeDefinition.Methods);
+
+                    if (typeDefinition.HasConstructors)
+                        ReadConstructors(type, typeDefinition.Constructors);
                 }
             }
 
+        }
 
-            // TODO: fields
+        private void ReadEvents(Type type, EventDefinitionCollection events)
+        {
+            throw new NotImplementedException();
+        }
 
+        /// <summary>
+        /// Reads fields and add them to field list for type
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="fields"></param>
+        private void ReadFields(Type type, FieldDefinitionCollection fields)
+        {
+            foreach (FieldDefinition fieldDefinition in fields)
+            {
+                var field = new Field()
+                                {
+                                    Name = fieldDefinition.Name
+                                };
+
+                type.Fields.Add(field);
+
+                // TODO : build dependency
+            }
         }
 
         /// <summary>
@@ -145,7 +169,7 @@ namespace CodeQualityAnalysis
         }
 
         /// <summary>
-        /// Extracts constructors and add them to method list for type
+        /// Reads constructors and add them to method list for type
         /// </summary>
         /// <param name="type"></param>
         /// <param name="constructors"></param>
@@ -176,7 +200,7 @@ namespace CodeQualityAnalysis
         }
 
         /// <summary>
-        /// Extracts method calls by extracting instrunctions
+        /// Reads method calls by extracting instrunctions
         /// </summary>
         /// <param name="method"></param>
         /// <param name="methodDefinition"></param>
@@ -208,7 +232,7 @@ namespace CodeQualityAnalysis
         }
 
         /// <summary>
-        /// Extracts instruction operand by recursive calling until non-instruction
+        /// Reads instruction operand by recursive calling until non-instruction
         /// operand is found 
         /// </summary>
         /// <param name="instruction"></param>
@@ -232,7 +256,7 @@ namespace CodeQualityAnalysis
         /// </summary>
         /// <param name="methodDefinition"></param>
         /// <returns></returns>
-        public static string FormatMethodName(MethodDefinition methodDefinition)
+        public string FormatMethodName(MethodDefinition methodDefinition)
         {
             if (methodDefinition.HasParameters)
             {
@@ -255,8 +279,18 @@ namespace CodeQualityAnalysis
             }
         }
 
-        public static string FormatTypeName(TypeDefinition typeDefinition)
+        /// <summary>
+        /// Formats a specific type name. If type is generic. Brackets <> will be added with proper names of parameters.
+        /// </summary>
+        /// <param name="typeDefinition"></param>
+        /// <returns></returns>
+        public string FormatTypeName(TypeDefinition typeDefinition)
         {
+            if (typeDefinition.IsNested && typeDefinition.DeclaringType != null)
+            {
+                return FormatTypeName(typeDefinition.DeclaringType) + "+" + typeDefinition.Name;
+            }
+
             if (typeDefinition.HasGenericParameters)
             {
                 var builder = new StringBuilder();
@@ -270,10 +304,38 @@ namespace CodeQualityAnalysis
                         builder.Append(",");
                 }
 
-                return typeDefinition.Name + "<" + builder.ToString() + ">";
+                return StripGenericName(typeDefinition.Name) + "<" + builder.ToString() + ">";
             }
 
             return typeDefinition.Name; 
+        }
+
+        /// <summary>
+        /// Removes a number of generics parameters. Eg. `3 will be removed from end of name.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        private string StripGenericName(string name)
+        {
+            return name.IndexOf('`') != -1 ? name.Remove(name.IndexOf('`')) : name;
+        }
+
+        /// <summary>
+        /// Gets namespace name. If type is nested it looks recursively to parent type until finds his namespace.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        private string GetNamespaceName(TypeDefinition type)
+        {
+            if (type.IsNested && type.DeclaringType != null)
+                return GetNamespaceName(type.DeclaringType);
+            else
+            {
+                if (!String.IsNullOrEmpty(type.Namespace))
+                    return type.Namespace;
+                else
+                    return "-";
+            }
         }
     }
 }

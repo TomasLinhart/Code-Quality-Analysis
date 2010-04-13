@@ -5,8 +5,9 @@ using System.Text;
 
 namespace CodeQualityAnalysis
 {
-    public class Type
+    public class Type : IDependency
     {
+        public ISet<Type> InnerTypes { get; set; }
         public ISet<Method> Methods { get; set; }
         public ISet<Field> Fields { get; set; }
         public string FullName { get; set; }

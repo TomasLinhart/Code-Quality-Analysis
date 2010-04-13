@@ -5,7 +5,7 @@ using System.Text;
 
 namespace CodeQualityAnalysis
 {
-    public class Namespace
+    public class Namespace : IDependency
     {
         public ISet<Type> Types { get; set; }
         public string Name { get; set; }

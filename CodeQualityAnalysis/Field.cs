@@ -5,7 +5,8 @@ using System.Text;
 
 namespace CodeQualityAnalysis
 {
-    public class Field
+    public class Field : IDependency
     {
+        public string Name { get; set; }
     }
 }

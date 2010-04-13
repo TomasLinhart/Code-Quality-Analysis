@@ -7,5 +7,6 @@ namespace CodeQualityAnalysis
 {
     public interface IDependency
     {
+        string Name { set; get; }
     }
 }

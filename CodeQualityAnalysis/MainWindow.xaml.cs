@@ -73,6 +73,12 @@ namespace CodeQualityAnalysis
                         var itemMethod = new TreeViewItem() { Header = method.Name };
                         itemType.Items.Add(itemMethod);
                     }
+
+                    foreach (var field in type.Fields)
+                    {
+                        var itemField = new TreeViewItem() { Header = field.Name };
+                        itemType.Items.Add(itemField);
+                    }
                 }
             }
         }

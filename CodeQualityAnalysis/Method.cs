@@ -5,7 +5,7 @@ using System.Text;
 
 namespace CodeQualityAnalysis
 {
-    public class Method
+    public class Method : IDependency
     {
         public ISet<Type> TypeUses { get; set; }
         public ISet<Method> MethodUses { get; set; }
