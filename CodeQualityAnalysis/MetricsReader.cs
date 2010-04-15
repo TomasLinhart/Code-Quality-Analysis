@@ -133,7 +133,13 @@ namespace CodeQualityAnalysis
 
                 type.Fields.Add(field);
 
-                // TODO : build dependency
+                var declaringType =
+                        (from n in type.Namespace.Module.Namespaces
+                         from t in n.Types
+                         where t.Name == field.Name
+                         select t).SingleOrDefault();
+
+                field.Type = declaringType;
             }
         }
 
@@ -210,23 +216,42 @@ namespace CodeQualityAnalysis
         {
             foreach (Instruction instruction in instructions)
             {
-                var meth = ReadInstruction(instruction) as MethodDefinition;
-                if (meth != null)
+                var instr = ReadInstruction(instruction);
+                if (instr != null)
                 {
+                    Console.WriteLine(instr.GetType());
+                    Console.WriteLine(instr);
+                }
+
+                
+                if (instr is MethodDefinition)
+                {
+                    var md = instr as MethodDefinition;
                     var type = (from n in method.Type.Namespace.Module.Namespaces
                                 from t in n.Types
-                                where t.Name == FormatTypeName(meth.DeclaringType) &&
+                                where t.Name == FormatTypeName(md.DeclaringType) &&
                                 n.Name == t.Namespace.Name
                                 select t).SingleOrDefault();
 
                     method.TypeUses.Add(type);
 
                     var findTargetMethod = (from m in type.Methods
-                                            where m.Name == FormatMethodName(meth)
+                                            where m.Name == FormatMethodName(md)
                                             select m).SingleOrDefault();
 
                     if (findTargetMethod != null && type == method.Type) 
                         method.MethodUses.Add(findTargetMethod);
+                }
+
+                if (instr is FieldDefinition)
+                {
+                    var fd = instr as FieldDefinition;
+                    var field = (from f in method.Type.Fields
+                                where f.Name == fd.Name
+                                select f).SingleOrDefault();
+
+                    if (field != null)
+                        method.FieldUses.Add(field);
                 }
             }
         }

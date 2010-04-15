@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using QuickGraph;
 
 namespace CodeQualityAnalysis
 {
@@ -30,6 +31,36 @@ namespace CodeQualityAnalysis
             }
 
             return set;
+        }
+
+        public BidirectionalGraph<object, IEdge<object>> BuildDependencyGraph()
+        {
+            var g = new BidirectionalGraph<object, IEdge<object>>();
+
+            foreach (var method in Methods)
+            {
+                g.AddVertex(method.Name);
+            }
+
+            foreach (var field in Fields)
+            {
+                g.AddVertex(field.Name);
+            }
+
+            foreach (var method in Methods)
+            {
+                foreach (var methodUse in method.MethodUses)
+                {
+                    g.AddEdge(new Edge<object>(method.Name, methodUse.Name));
+                }
+
+                foreach (var fieldUse in method.FieldUses)
+                {
+                    g.AddEdge(new Edge<object>(method.Name, fieldUse.Name));
+                }
+            }
+
+            return g;
         }
     }
 }

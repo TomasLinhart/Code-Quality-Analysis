@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using QuickGraph;
 
 namespace CodeQualityAnalysis
 {
@@ -14,6 +15,11 @@ namespace CodeQualityAnalysis
         public Namespace()
         {
             Types = new HashSet<Type>();
+        }
+
+        public BidirectionalGraph<object, IEdge<object>> BuildDependencyGraph()
+        {
+            return null;
         }
     }
 }

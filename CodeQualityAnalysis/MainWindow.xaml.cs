@@ -33,7 +33,7 @@ namespace CodeQualityAnalysis
 
         private void btnOpenAssembly_Click(object sender, RoutedEventArgs e)
         {
-            var fileDialog = new Microsoft.Win32.OpenFileDialog
+            var fileDialog = new OpenFileDialog
                                  {
                                      Filter = "Component Files (*.dll, *.exe)|*.dll;*.exe"
                                  };
@@ -55,28 +55,28 @@ namespace CodeQualityAnalysis
         /// </summary>
         private void FillTree()
         {
-            var itemModule = new TreeViewItem() { Header = _metricsReader.MainModule.Name };
+            var itemModule = new MetricTreeViewItem() { Header = _metricsReader.MainModule.Name, Dependency = _metricsReader.MainModule };
             definitionTree.Items.Add(itemModule);
 
             foreach (var ns in _metricsReader.MainModule.Namespaces)
             {
-                var nsType = new TreeViewItem() { Header = ns.Name };
+                var nsType = new MetricTreeViewItem() { Header = ns.Name, Dependency = ns };
                 itemModule.Items.Add(nsType);
 
                 foreach (var type in ns.Types)
                 {
-                    var itemType = new TreeViewItem() { Header = type.Name };
+                    var itemType = new MetricTreeViewItem() { Header = type.Name, Dependency = type };
                     nsType.Items.Add(itemType);
 
                     foreach (var method in type.Methods)
                     {
-                        var itemMethod = new TreeViewItem() { Header = method.Name };
+                        var itemMethod = new MetricTreeViewItem() { Header = method.Name, Dependency = method };
                         itemType.Items.Add(itemMethod);
                     }
 
                     foreach (var field in type.Fields)
                     {
-                        var itemField = new TreeViewItem() { Header = field.Name };
+                        var itemField = new MetricTreeViewItem() { Header = field.Name, Dependency = field };
                         itemType.Items.Add(itemField);
                     }
                 }
@@ -85,7 +85,7 @@ namespace CodeQualityAnalysis
 
         private void definitionTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            var item = definitionTree.SelectedItem as TreeViewItem;
+            var item = definitionTree.SelectedItem as MetricTreeViewItem;
 
             if (item != null)
             {
@@ -93,41 +93,23 @@ namespace CodeQualityAnalysis
                 // will do it later or will use another tree maybe tree from SharpDevelop
                 string name = item.Header.ToString();
                 txbTypeInfo.Text = "Infobox: \n" + name;
-                var type = (from n in this._metricsReader.MainModule.Namespaces
+                /*var type = (from n in this._metricsReader.MainModule.Namespaces
                             from t in n.Types
                             where t.Name == name
-                            select t).SingleOrDefault();
+                            select t).SingleOrDefault();*/
 
-                if (type != null)
+                var graph = item.Dependency.BuildDependencyGraph();
+                if (graph != null && graph.VertexCount > 0)
                 {
-                    var graph = CreateGraphForType(type);
-                    if (graph.VertexCount > 0)
-                    {
-                        graphLayout.Graph = graph;
-                    }
+                    graphLayout.Graph = graph;
                 }
             }
 
         }
 
-        private BidirectionalGraph<object, IEdge<object>> CreateGraphForType(Type type)
+        private class MetricTreeViewItem : TreeViewItem
         {
-            var g = new BidirectionalGraph<object, IEdge<object>>();
-
-            foreach (var method in type.Methods)
-            {
-                g.AddVertex(method.Name);
-            }
-
-            foreach (var method in type.Methods)
-            {
-                foreach (var methodUse in method.MethodUses)
-                {
-                    g.AddEdge(new Edge<object>(method.Name, methodUse.Name));
-                }
-            }            
-
-            return g;
+            public IDependency Dependency { get; set; }
         }
     }
 }
