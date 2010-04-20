@@ -217,12 +217,6 @@ namespace CodeQualityAnalysis
             foreach (Instruction instruction in instructions)
             {
                 var instr = ReadInstruction(instruction);
-                if (instr != null)
-                {
-                    Console.WriteLine(instr.GetType());
-                    Console.WriteLine(instr);
-                }
-
                 
                 if (instr is MethodDefinition)
                 {

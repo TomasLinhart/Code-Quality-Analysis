@@ -8,7 +8,14 @@ namespace CodeQualityAnalysis
 {
     public class Module : IDependency
     {
+        /// <summary>
+        /// Namespaces within module
+        /// </summary>
         public ISet<Namespace> Namespaces { get; set; }
+
+        /// <summary>
+        /// Name of module
+        /// </summary>
         public string Name { get; set; }
 
         public Module()
